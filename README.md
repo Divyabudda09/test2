@@ -1,6 +1,6 @@
 # Gift Registry Import
 
-> **Swym · Gift Registry · Operations Reference**
+> **Swym · Gift Registry · **
 
 ---
 

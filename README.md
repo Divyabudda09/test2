@@ -1,6 +1,6 @@
 # Gift Registry Import
 
-> **Swym · Gift Registry · **
+> **Swym · Gift Registry ·**
 
 ---
 
@@ -95,7 +95,7 @@ IMPORT_LIMIT=
 One script handles both the combined registry file and its per-registry item files. It reads all config from `.env`.
 
 <details>
-<summary><b>▸ Show script</b></summary>
+<summary><b>Show script</b></summary>
 
 ```js
 const fs = require("fs");

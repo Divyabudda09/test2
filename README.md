@@ -98,23 +98,6 @@ const fs = require("fs");
 const path = require("path");
 const csv = require("@fast-csv/parse");
 
-// ---------------------------------------------------------------------------
-// Imports the La Coqueta UK dataset (La_Coqueta_UK_All_registries.csv + one
-// <RegistryId>.csv per registry) into Swym's Gift Registry. Adapted from
-// ../../gift-registry-import/src/importLacoquetaRegistry.js and
-// ../../gift-reg-test-import/src/importAuraRegistry.js:
-//  - registry id column is "RegistryId", not "ID"
-//  - item rows already carry "product id(empi)" directly, so no Shopify
-//    variant lookup is needed to resolve a product id
-//  - each row carries its own "Pid" - that per-row Pid is used for every Swym
-//    API call instead of a single global PID (per user's explicit choice)
-//  - item files here ship with a corrupted header row (tab-joined names
-//    followed by a stray duplicated comma-joined tail), so item columns are
-//    assigned by fixed position instead of trusting the file's own header
-//
-// Run `npm install` in this folder first (installs @fast-csv/parse).
-// Config comes from environment variables - see .env.example.
-// ---------------------------------------------------------------------------
 
 const DRY_RUN = process.argv.includes("--dry-run") || parseBool(process.env.DRY_RUN);
 

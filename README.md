@@ -28,7 +28,7 @@ All four keys are store-specific. Look them up in the Metabase [**Merchant confi
 
 ### Combined registry CSV
 
-Template: [Make a copy of the Google Sheet](https://docs.google.com/spreadsheets/d/1PKOby9EANuv248UBsltXk09wuUp5K3GhwI-5ZqGNjV8/copy). Fill it in, then **File → Download → CSV**.
+Template: [Make a copy of the Google Sheet](https://docs.google.com/spreadsheets/d/1PKOby9EANuv248UBsltXk09wuUp5K3GhwI-5ZqGNjV8). Fill it in, then **File → Download → CSV**.
 
 | Column | Required | Notes |
 |---|---|---|
@@ -46,7 +46,7 @@ Template: [Make a copy of the Google Sheet](https://docs.google.com/spreadsheets
 
 ### Individual registry item CSV (`<RegistryId>.csv`)
 
-Template: [Make a copy of the Google Sheet](https://docs.google.com/spreadsheets/d/1_JKJVeM6druqoRrZj5yKsX8Ylc1b4Nn7VRIuVE1edWw/copy). Fill it in, then **File → Download → CSV** and name the file `<RegistryId>.csv`.
+Template: [Make a copy of the Google Sheet](https://docs.google.com/spreadsheets/d/1_JKJVeM6druqoRrZj5yKsX8Ylc1b4Nn7VRIuVE1edWw). Fill it in, then **File → Download → CSV** and name the file `<RegistryId>.csv`.
 
 | # | Column | Required | Notes |
 |---|---|---|---|

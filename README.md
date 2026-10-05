@@ -1,4 +1,4 @@
-# Registry Import Manifest
+# Gift Registry Import
 
 > **Swym · Gift Registry · Operations Reference**
 
@@ -9,11 +9,11 @@
 ### Files
 
 - **Combined registry CSV**: one file, one row per registry.
-- **Individual registry item CSVs**: one file per registry, named `<RegistryId>.csv`, using that registry's own id from the combined file as the filename.
+- **Individual registry item CSVs**: one file per registry, named `<RegistryId>.csv`. Use that registry's own `RegistryId` from the combined file as the filename.
 
 ### Keys
 
-All four keys are store-specific. Look them up in Metabase's **Merchant configs** table for the store you are importing into.
+All four keys are store-specific. Look them up in the Metabase [**Merchant configs**](https://metabase-prod.ops.internalswym.com/question/1127-merchantconfigs) table for the store you are importing into.
 
 | Key | What it is |
 |---|---|
@@ -24,14 +24,104 @@ All four keys are store-specific. Look them up in Metabase's **Merchant configs*
 
 ---
 
-## 02 · Script
+## 02 · CSV formats
 
-One script handles both the combined registry file and its per-registry item files, reading all config from `.env`.
+### Combined registry CSV
 
-**Path:** `src/importRegistry.js`
+One header row, then one row per registry. Column order does not matter, because the script reads this file by header name. Header names must match exactly, including the `→` character in the `Address →` and `Settings →` columns.
+
+```csv
+Address → Address1,Address → Address2,Address → City,Address → Company,Address → Country,Address → CountryCode,Address → FirstName,Address → LastName,Address → Phone,Address → Province,Address → State,Address → Street,Address → Zip,RegistryId,Settings → IsPasswordProtected,RegistryName,CreatorName,CoCreatorName,Email,Description,ExpiryDate,CreatedAt,UpdatedAt,AssociatedListId,Pid,Address,IsDeleted,Settings,CustomProps,Occasion,Mode,Password,ImageURL,IsArchived,ArchivalDate
+```
+
+| Column | Required | Notes |
+|---|---|---|
+| `RegistryId` | Yes | Source registry id. Must match the item file name (`<RegistryId>.csv`). |
+| `Email` | Yes | Registry owner's email. Rows without it are skipped. |
+| `RegistryName` | Yes | |
+| `Pid` | Yes* | Per-row Swym PID. *If empty, the script uses `PID` from `.env`. |
+| `ExpiryDate` | No | Any date `new Date()` can parse. Sent as `YYYY-MM-DD`. |
+| `Occasion` | No | Empty or `N/A` becomes `Others`. |
+| `Mode` | No | Defaults to `public`. |
+| `Settings → IsPasswordProtected` | No | `true` / `false`. If `true`, `Password` is sent. |
+| `IsDeleted`, `IsArchived` | No | `true` rows are skipped (see `SKIP_DELETED`, `SKIP_ARCHIVED`). |
+| `CustomProps` | No | JSON string. Kept as `sourceCustomProps`. |
+| `Address → *` | No | Mapped into the registry address. |
+
+Any column not listed in the script's known columns is copied into `customProps`.
+
+### Individual registry item CSV (`<RegistryId>.csv`)
+
+One header row, then one row per product. The script **ignores the header row** and reads columns **by position**, so the column order below is mandatory.
+
+```csv
+product id(empi),variant id (epi),Handle,Pid,RegistryId,AskQuantity,CustomProps,BoughtQuantity,CreatedAt,UpdatedAt
+1111111111111,2222222222222,sample-product-handle,example-pid,1000001,2,,1,2026-01-01T00:00:00Z,2026-01-01T00:00:00Z
+```
+
+| # | Column | Required | Notes |
+|---|---|---|---|
+| 1 | `product id(empi)` | Yes | Shopify product id. Rows without it are skipped. |
+| 2 | `variant id (epi)` | Yes | Shopify variant id. Rows without it are skipped. |
+| 3 | `Handle` | No | Product handle or full URL. Builds the product link. |
+| 4 | `Pid` | No | Not used for API calls (the registry row's `Pid` is used). |
+| 5 | `RegistryId` | No | A warning is logged if it does not match the file name. |
+| 6 | `AskQuantity` | No | Empty, `0` or invalid becomes `1`. |
+| 7 | `CustomProps` | No | Not used. |
+| 8 | `BoughtQuantity` | No | If `1` or more, the item is marked as bought. |
+| 9 | `CreatedAt` | No | Not used. |
+| 10 | `UpdatedAt` | No | Not used. |
+
+---
+
+## 03 · `.env` format
+
+Copy `.env.example` to `.env` and fill in the values. Do not commit `.env`.
+
+```bash
+# Shopify store (target store you are importing INTO)
+SHOP=your-store.myshopify.com
+SHOPIFY_API_VERSION=2026-04
+ADMIN_API_ACCESS_TOKEN=shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Swym Gift Registry
+APP_ACCESS_TOKEN=your-swym-app-access-token
+SWYM_REGISTRY_API_URL=https://api.swymregistry.com/giftRegistry/v1
+
+# Fallback Pid, only used if a registry row has no Pid of its own
+PID=
+
+# Input files (paths are relative to the script's folder)
+COMBINED_REGISTRY_CSV=../<combined-registries>.csv
+INDIVIDUAL_REGISTRY_DIR=..
+
+# Optional
+SKIP_DELETED=true
+SKIP_ARCHIVED=true
+IMPORT_LIMIT=
+```
+
+| Variable | Required | Default |
+|---|---|---|
+| `SHOP` | Yes | |
+| `ADMIN_API_ACCESS_TOKEN` | Yes | |
+| `APP_ACCESS_TOKEN` | Yes | |
+| `PID` | No | Empty (per-row `Pid` is used) |
+| `SHOPIFY_API_VERSION` | No | `2026-04` |
+| `SWYM_REGISTRY_API_URL` | No | `https://api.swymregistry.com/giftRegistry/v1` |
+| `COMBINED_REGISTRY_CSV` | No | `../La_Coqueta_UK_All_registries.csv` |
+| `INDIVIDUAL_REGISTRY_DIR` | No | `..` |
+| `SKIP_DELETED` / `SKIP_ARCHIVED` | No | `true` |
+| `IMPORT_LIMIT` | No | Empty (import all rows) |
+
+---
+
+## 04 · Script
+
+One script handles both the combined registry file and its per-registry item files. It reads all config from `.env`.
 
 <details>
-<summary><b>▸ Show script</b> (src/importRegistry.js)</summary>
+<summary><b>▸ Show script</b></summary>
 
 ```js
 const fs = require("fs");
@@ -612,7 +702,7 @@ module.exports = { main, buildRegistryPayload, buildItemPayloads, formatDate };
 
 ---
 
-## 03 · How to run
+## 05 · How to run
 
 ```bash
 cp .env.example .env      # fill in SHOP, ADMIN_API_ACCESS_TOKEN, APP_ACCESS_TOKEN, PID
@@ -620,12 +710,3 @@ npm install
 npm run import:dry-run    # checks only, no writes
 npm run import            # live import
 ```
-
----
-
-## 04 · Verified
-
-| Store | Result |
-|---|---|
-| `swymtest-aura-divya.myshopify.com` | ✅ 1 / 1 imported |
-| `la-coqueta-kids.myshopify.com` | ✅ 37 / 37 imported |
